@@ -10,6 +10,10 @@ const cipher = require("tiny-cipher");
 const none = "none";
 const empty = "";
 
+function filename (prefix, key) {
+	return prefix + "_" + key + ".json";
+}
+
 function dir (fp) {
 	let defer = deferred();
 
@@ -24,9 +28,23 @@ function dir (fp) {
 	return defer.promise;
 }
 
-function files (fp, key) {
+function delFile (fp) {
+	let defer = deferred();
+
+	fs.unlinkFile(fp, function (e) {
+		if (e) {
+			defer.reject(e);
+		} else {
+			defer.resolve(true);
+		}
+	});
+
+	return defer.promise;
+}
+
+function files (fp, prefix) {
 	let defer = deferred(),
-		regex = new RegExp("^" + key);
+		regex = new RegExp("^" + prefix);
 
 	fs.readdir(fp, function (e, args) {
 		let results;
@@ -76,8 +94,8 @@ function readFile (fp, iv) {
 			if (iv !== empty) {
 				try {
 					ldata = cipher(data, false, iv);
-				} catch (e) {
-					return defer.reject(e);
+				} catch (err) {
+					return defer.reject(err);
 				}
 			} else {
 				ldata = data;
@@ -94,23 +112,23 @@ function readFile (fp, iv) {
 	return defer.promise;
 }
 
-function read (fp, iv) {
+function read (fp, iv, prefix) {
 	let defer = deferred();
 
-	isDir(fp).then(function (dir) {
+	isDir(fp).then(function (d) {
 		let deferreds;
 
-		if (dir) {
-			files().then(function (args) {
+		if (d) {
+			files(fp, prefix).then(function (args) {
 				deferreds = args.map(function (i) {
-					return readFile(i, iv);
+					return readFile(path.join(fp, i), iv);
 				});
 
 				Promise.all(deferreds).then(function (result) {
 					defer.resolve(result);
 				}, function (e) {
 					defer.reject(e);
-				})
+				});
 			}, function (e) {
 				defer.reject(e);
 			});
@@ -131,7 +149,7 @@ function read (fp, iv) {
 function upsert (fp, arg) {
 	let defer = deferred();
 
-	fs.writeFile(fp, iv !== empty ? cipher(arg, true, iv) : JSON.stringify(arg, null, 0), function (e) {
+	fs.writeFile(fp, arg, function (e) {
 		if (e) {
 			defer.reject(e);
 		} else {
@@ -142,29 +160,20 @@ function upsert (fp, arg) {
 	return defer.promise;
 }
 
-function delFile (fp) {
-	let defer = deferred();
-
-	fs.unlinkFile(fp, function (e) {
-		if (e) {
-			defer.reject(e);
-		} else {
-			defer.resolve(true);
-		}
-	});
-
-	return defer.promise;
+function prepare (iv, arg) {
+	return iv !== empty ? cipher(arg, true, iv) : JSON.stringify(arg, null, 0);
 }
 
-function write (fp, iv, data) {
+
+function write (fp, prefix, key, iv, data) {
 	let defer = deferred();
 
-	isDir(fp).then(function (dir) {
+	isDir(fp).then(function (d) {
 		let deferreds;
 
-		if (dir) {
+		if (d) {
 			deferreds = data.map(function (i) {
-				return upsert(fp, iv !== empty ? cipher(i, true, iv) : JSON.stringify(i, null, 0));
+				return upsert(path.join(fp, filename(prefix, i[key])), prepare(iv, i));
 			});
 
 			Promise.all(deferreds).then(function () {
@@ -173,7 +182,7 @@ function write (fp, iv, data) {
 				defer.reject(e);
 			});
 		} else {
-			upsert(fp, iv !== empty ? cipher(data, true, iv) : JSON.stringify(data, null, 0)).then(function () {
+			upsert(fp, prepare(iv, data)).then(function () {
 				defer.resolve(true);
 			}, function (e) {
 				defer.reject(e);
@@ -186,14 +195,14 @@ function write (fp, iv, data) {
 	return defer.promise;
 }
 
-function del (fp) {
+function del (fp, prefix, key) {
 	let defer = deferred();
 
-	isDir(fp).then(function (dir) {
-		if (dir) {
-			files(fp).then(function (args) {
+	isDir(fp).then(function (d) {
+		if (d) {
+			files(fp, prefix).then(function (args) {
 				let deferreds = args.map(function (i) {
-					return delFile(i);
+					return delFile(path.join(fp, filename(prefix, i[key])));
 				});
 
 				Promise.all(deferreds).then(function () {
@@ -203,7 +212,7 @@ function del (fp) {
 				});
 			}, function (e) {
 				defer.reject(e);
-			})
+			});
 		} else {
 			delFile(fp).then(function () {
 				defer.resolve(true);
@@ -221,27 +230,26 @@ function del (fp) {
 function adapter (store, op, key, data) {
 	let defer = deferred(),
 		record = key !== undefined,
-		fpEnc = store.adapters.fs.encryption || none,
-		fpSalt = store.adapters.fs.salt || none,
+		iv = store.adapters.fs.iv || none,
 		fpDir = store.adapters.fs.directory || tmp,
 		prefix = store.id,
-		lkey = record ? prefix + "_" + key : empty;
+		lkey = record ? filename(prefix, key) : empty;
 
 	dir(fpDir).then(function () {
 		if (op === "get") {
-			read(path.join(fpDir, lkey), fpEnc, fpSalt).then(function (data) {
-				defer.resolve(data);
+			read(path.join(fpDir, lkey), iv).then(function (result) {
+				defer.resolve(result);
 			}, function (e) {
 				defer.reject(e);
 			});
 		} else if (op === "remove") {
-			del(path.join(fpDir, lkey)).then(function () {
+			del(path.join(fpDir, lkey), prefix, store.key).then(function () {
 				defer.resolve(true);
 			}, function (e) {
 				defer.reject(e);
 			});
 		} else if (op === "set") {
-			write(path.join(fpDir, lkey), fpEnc, fpSalt, record ? data : store.toArray()).then(function () {
+			write(path.join(fpDir, lkey), prefix, store.key, iv, record ? data : store.toArray()).then(function () {
 				defer.resolve(true);
 			}, function (e) {
 				defer.reject(e);
