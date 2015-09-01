@@ -8,7 +8,6 @@ const path = require("path");
 const tmp = require("os").tmpdir();
 const cipher = require("tiny-cipher");
 const empty = "";
-const notFound = "Path not found";
 
 function filename (prefix, key) {
 	return prefix + "_" + key + ".json";
@@ -35,7 +34,7 @@ function dir (fp) {
 function delFile (fp) {
 	let defer = deferred();
 
-	fs.unlinkFile(fp, function (e) {
+	fs.unlink(fp, function (e) {
 		if (e) {
 			defer.reject(e);
 		} else {
@@ -71,7 +70,7 @@ function isDir (fp) {
 
 	fs.exists(fp, function (exists) {
 		if (!exists) {
-			defer.reject(new Error(notFound));
+			defer.resolve(false);
 		} else {
 			fs.stat(fp, function (e, stats) {
 				if (e) {
@@ -89,7 +88,7 @@ function isDir (fp) {
 function readFile (fp, iv) {
 	let defer = deferred();
 
-	fs.readFile(fp, function (e, data) {
+	fs.readFile(fp, {encoding: "utf8"}, function (e, data) {
 		let ldata;
 
 		if (e) {
@@ -173,7 +172,7 @@ function write (fp, prefix, key, iv, data) {
 
 		if (d) {
 			deferreds = data.map(function (i) {
-				return upsert(path.join(fp, filename(prefix, i[key])), prepare(iv, i));
+				return upsert(path.join(fp, filename(prefix, i[key])), prepare(iv, JSON.stringify(i, null, 0)));
 			});
 
 			Promise.all(deferreds).then(function () {
@@ -182,7 +181,7 @@ function write (fp, prefix, key, iv, data) {
 				defer.reject(e);
 			});
 		} else {
-			upsert(fp, prepare(iv, data)).then(function () {
+			upsert(fp, prepare(iv, JSON.stringify(data, null, 0))).then(function () {
 				defer.resolve(true);
 			}, function (e) {
 				defer.reject(e);
@@ -195,14 +194,14 @@ function write (fp, prefix, key, iv, data) {
 	return defer.promise;
 }
 
-function del (fp, prefix, key) {
+function del (fp, prefix) {
 	let defer = deferred();
 
 	isDir(fp).then(function (d) {
 		if (d) {
 			files(fp, prefix).then(function (args) {
 				let deferreds = args.map(function (i) {
-					return delFile(path.join(fp, filename(prefix, i[key])));
+					return delFile(path.join(fp, i));
 				});
 
 				Promise.all(deferreds).then(function () {
@@ -243,7 +242,7 @@ function adapter (store, op, key, data) {
 				defer.reject(e);
 			});
 		} else if (op === "remove") {
-			del(path.join(fpDir, lkey), prefix, store.key).then(function () {
+			del(path.join(fpDir, lkey), prefix).then(function () {
 				defer.resolve(true);
 			}, function (e) {
 				defer.reject(e);

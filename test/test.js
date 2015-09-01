@@ -99,36 +99,29 @@ exports["get - record"] = {
 		});
 	}
 };
-/*
+
 exports["set - datastore"] = {
 	setUp: function (done) {
 		this.data = clone(data);
-		this.localStorage = localStorage;
 		this.store = haro(null, config);
 		this.store.register("fs", adapter);
-		this.key = this.store.adapters.fs;
+		this.store.id = 'verify';
 		done();
 	},
 	test: function (test) {
 		var self = this;
 
-		test.expect(3);
+		test.expect(2);
 		test.equal(this.store.total, 0, "Should be 0");
 		this.store.batch(this.data, "set").then(function () {
 			test.equal(self.store.total, 2, "Should be 2");
-			return self.store.save("local");
-		}, function () {
-			self.store.unload("local");
-			test.done();
+			return self.store.save("fs");
+		}, function (e) {
+			throw e;
 		}).then(function () {
-			var ldata = self.store.toArray().map(function (i) {
-				return JSON.parse(localStorage.getItem(self.key + "_" + i.guid));
-			});
-
-			test.equal(JSON.stringify(self.store.toArray()), JSON.stringify(ldata), "Should match");
-			return self.store.unload("local");
-		}, function () {
-			test.done();
+			return self.store.unload("fs");
+		}, function (e) {
+			throw e;
 		}).then(function () {
 			test.done();
 		}, function () {
@@ -136,7 +129,7 @@ exports["set - datastore"] = {
 		});
 	}
 };
-
+/*
 exports["set - record"] = {
 	setUp: function (done) {
 		var self = this;
