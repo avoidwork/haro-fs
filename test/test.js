@@ -89,7 +89,7 @@ exports["get - record"] = {
 		test.equal(result.guid, this.data[0].guid, "Should match");
 		this.store.load("fs", result.guid).then(function () {
 			test.equal(self.store.total, 1, "Should be 1");
-			return self.store.unload("local");
+			return self.store.unload("fs");
 		}, function () {
 			test.done();
 		}).then(function () {
@@ -129,116 +129,103 @@ exports["set - datastore"] = {
 		});
 	}
 };
-/*
+
 exports["set - record"] = {
 	setUp: function (done) {
-		var self = this;
+		var self = this,
+			deferreds, fp;
 
 		this.data = clone(data);
-		this.localStorage = localStorage;
 		this.store = haro(null, config);
 		this.store.register("fs", adapter);
-		this.key = this.store.adapters.fs;
-		this.data.forEach(function (i) {
-			self.localStorage.setItem(self.key + "_" + i[self.store.key], JSON.stringify(i));
-		});
-		done();
-	},
-	test: function (test) {
-		var self = this;
 
-		test.expect(5);
-		test.equal(this.store.total, 0, "Should be 0");
-		this.store.load("local").then(function () {
-			test.equal(self.store.total, 2, "Should be 2");
-			return self.store.set(null, {guid: "ghi", yay: true});
-		}, function () {
-			test.done();
-		}).then(function (arg) {
-			var record = JSON.parse(self.localStorage.getItem(self.key + "_" + arg[0]));
+		fp = path.join(this.store.adapters.fs.directory, this.store.id);
+		deferreds = this.data.map(function (i) {
+			var defer = deferred();
 
-			test.equal(self.store.total, 3, "Should be 3");
-			test.equal(arg[0], record.guid, "Should match");
-			test.equal(self.store.limit(1, 2)[0][0], record.guid, "Should match");
-			return self.store.unload("local");
-		}, function () {
-			test.done();
-		}).then(function () {
-			test.done();
-		}, function () {
-			test.done();
-		});
-	}
-};
-
-exports["remove - datastore"] = {
-	setUp: function (done) {
-		this.data = clone(data);
-		this.localStorage = localStorage;
-		this.store = haro(null, config);
-		this.store.register("fs", adapter);
-		this.key = this.store.adapters.fs;
-		done();
-	},
-	test: function (test) {
-		var self = this;
-
-		test.expect(3);
-		test.equal(this.store.total, 0, "Should be 0");
-		this.store.batch(this.data, "set").then(function () {
-			test.equal(self.store.total, 2, "Should be 2");
-			return self.store.save("local");
-		}, function () {
-			test.done();
-		}).then(function () {
-			return self.store.unload("local");
-		}, function () {
-			test.done();
-		}).then(function () {
-			var regex = new RegExp("^" + self.key + "_"),
-				ldata;
-
-			ldata = Object.keys(localStorage).filter(function (i) {
-				return regex.test(i);
+			fs.writeFile(fp + "_" + i[self.store.key] + ".json", JSON.stringify(i, null, 0), function (e) {
+				if (e) {
+					defer.reject(e);
+				} else {
+					defer.resolve(true);
+				}
 			});
 
-			test.equal(ldata.length, 0, "Should match");
+			return defer.promise;
+		});
+
+		Promise.all(deferreds).then(function () {
+			done();
+		}, function (e) {
+			done(e);
+		});
+	},
+	test: function (test) {
+		var self = this;
+
+		test.expect(2);
+		test.equal(this.store.total, 0, "Should be 0");
+		this.store.load("fs").then(function () {
+			test.equal(self.store.total, 2, "Should be 2");
+			return self.store.set(null, {guid: "ghi", yay: true});
+		}, function (e) {
+			test.done(e);
+		}).then(function () {
 			test.done();
-		}, function () {
-			test.done();
+		}, function (e) {
+			console.log(e.stack);
+			test.done(e);
 		});
 	}
 };
 
 exports["remove - record"] = {
 	setUp: function (done) {
+		var self = this,
+			deferreds, fp;
+
 		this.data = clone(data);
-		this.localStorage = localStorage;
 		this.store = haro(null, config);
+		this.store.id = "remove";
 		this.store.register("fs", adapter);
-		this.key = this.store.adapters.fs;
-		done();
+
+		fp = path.join(this.store.adapters.fs.directory, this.store.id);
+		deferreds = this.data.map(function (i) {
+			var defer = deferred();
+
+			fs.writeFile(fp + "_" + i[self.store.key] + ".json", JSON.stringify(i, null, 0), function (e) {
+				if (e) {
+					defer.reject(e);
+				} else {
+					defer.resolve(true);
+				}
+			});
+
+			return defer.promise;
+		});
+
+		Promise.all(deferreds).then(function () {
+			done();
+		}, function (e) {
+			done(e);
+		});
 	},
 	test: function (test) {
-		var self = this,
-			key;
+		var self = this;
 
 		test.expect(3);
 		test.equal(this.store.total, 0, "Should be 0");
-		this.store.batch(this.data, "set").then(function (args) {
-			key = args[0][0];
+		this.store.load("fs").then(function () {
 			test.equal(self.store.total, 2, "Should be 2");
-			return self.store.unload("local", key);
-		}, function () {
-			test.done();
+			return self.store.del("abc");
+		}, function (e) {
+			test.done(e);
 		}).then(function () {
-			var ldata = JSON.parse(self.localStorage.getItem(self.key + "_" + key));
-
-			test.equal(ldata, null, "Should match");
+			test.equal(self.store.total, 1, "Should be 1");
 			test.done();
-		}, function () {
-			test.done();
+		}, function (e) {
+			console.log(e.stack);
+			test.done(e);
 		});
 	}
 };
-*/
