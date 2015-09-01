@@ -41,6 +41,7 @@
     "haro": "^1.5.5"
   },
   "dependencies": {
+    "es6-promise": "^3.0.2",
     "mkdirp": "^0.5.1",
     "tiny-cipher": "^1.0.1",
     "tiny-defer": "^1.0.2"

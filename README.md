@@ -32,7 +32,7 @@ store = haro(null, {
 });
 
 // Register the adapter
-store.register('mongo', require('haro-fs'));
+store.register('fs', require('haro-fs'));
 
 // Ready to `load()`, `batch()` or `set()`!
 ```
