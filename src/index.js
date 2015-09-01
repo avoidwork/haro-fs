@@ -14,6 +14,10 @@ function filename (prefix, key) {
 	return prefix + "_" + key + ".json";
 }
 
+function prepare (iv, arg) {
+	return iv !== empty ? cipher(arg, true, iv) : JSON.stringify(arg, null, 0);
+}
+
 function dir (fp) {
 	let defer = deferred();
 
@@ -69,7 +73,7 @@ function isDir (fp) {
 		if (!exists) {
 			defer.reject(new Error(notFound));
 		} else {
-			fs.lstat(fp, function (e, stats) {
+			fs.stat(fp, function (e, stats) {
 				if (e) {
 					defer.reject(e);
 				} else {
@@ -112,7 +116,7 @@ function readFile (fp, iv) {
 	return defer.promise;
 }
 
-function read (fp, iv, prefix) {
+function read (fp, prefix, iv) {
 	let defer = deferred();
 
 	isDir(fp).then(function (d) {
@@ -158,10 +162,6 @@ function upsert (fp, arg) {
 	});
 
 	return defer.promise;
-}
-
-function prepare (iv, arg) {
-	return iv !== empty ? cipher(arg, true, iv) : JSON.stringify(arg, null, 0);
 }
 
 
@@ -237,7 +237,7 @@ function adapter (store, op, key, data) {
 
 	dir(fpDir).then(function () {
 		if (op === "get") {
-			read(path.join(fpDir, lkey), iv).then(function (result) {
+			read(path.join(fpDir, lkey), prefix, iv).then(function (result) {
 				defer.resolve(result);
 			}, function (e) {
 				defer.reject(e);
