@@ -15,6 +15,8 @@ Require the adapter & register it with `haro.register(key, fn)`. The key must ma
 
 If `iv` is specified, the file(s) on disk will contain ciphers, to be deciphered when loaded back into `haro`.
 
+It is safe to reuse the same folder, the file names will be a combination of `store.id` + `record.key`.
+
 ```javascript
 var haro = require('haro'),
     store;
@@ -23,7 +25,7 @@ var haro = require('haro'),
 store = haro(null, {
   adapters: {
     fs: {
-      directory: '/path/to/records/'
+      directory: '/path/to/files'
       iv: ''
     }
   }
