@@ -26,7 +26,7 @@ store = haro(null, {
   adapters: {
     fs: {
       directory: "/path/to/records/"
-      iv: "none"
+      iv: ""
     }
   }
 });
