@@ -25,8 +25,8 @@ var haro = require('haro'),
 store = haro(null, {
   adapters: {
     fs: {
-      directory: "/path/to/records/"
-      iv: ""
+      directory: '/path/to/records/'
+      iv: ''
     }
   }
 });
