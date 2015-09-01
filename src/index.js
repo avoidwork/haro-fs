@@ -7,7 +7,6 @@ const mkdirp = require("mkdirp");
 const path = require("path");
 const tmp = require("os").tmpdir();
 const cipher = require("tiny-cipher");
-const none = "none";
 const empty = "";
 
 function filename (prefix, key) {
@@ -230,7 +229,7 @@ function del (fp, prefix, key) {
 function adapter (store, op, key, data) {
 	let defer = deferred(),
 		record = key !== undefined,
-		iv = store.adapters.fs.iv || none,
+		iv = store.adapters.fs.iv || empty,
 		fpDir = store.adapters.fs.directory || tmp,
 		prefix = store.id,
 		lkey = record ? filename(prefix, key) : empty;
