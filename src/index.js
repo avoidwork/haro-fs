@@ -8,6 +8,7 @@ const path = require("path");
 const tmp = require("os").tmpdir();
 const cipher = require("tiny-cipher");
 const empty = "";
+const notFound = "Path not found";
 
 function filename (prefix, key) {
 	return prefix + "_" + key + ".json";
@@ -66,7 +67,7 @@ function isDir (fp) {
 
 	fs.exists(fp, function (exists) {
 		if (!exists) {
-			defer.reject(new Error("Path not found"));
+			defer.reject(new Error(notFound));
 		} else {
 			fs.lstat(fp, function (e, stats) {
 				if (e) {
