@@ -37,9 +37,6 @@ store.register('fs', require('haro-fs'));
 // Ready to `load()`, `batch()` or `set()`!
 ```
 
-### Encryption
-`haro-fs` supports writing & reading ciphers. Supported 
-
 ## License
 Copyright (c) 2015 Jason Mulligan
 Licensed under the BSD-3 license
